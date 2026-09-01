@@ -1,6 +1,6 @@
 # Schema Doctor
 
-> Automated Relational Database Normalization and Functional Dependency Analysis Engine
+
 
 Schema Doctor is a web-based database management systems (DBMS) tool designed to diagnose unnormalized database tables, infer functional dependencies, compute candidate primary keys via attribute closure (X+), detect normal form violations (1NF, 2NF, 3NF, BCNF), and decompose relations into 3NF schema definitions without data loss.
 
