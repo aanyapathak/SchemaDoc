@@ -36,14 +36,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Stethoscope className="h-6 w-6 stroke-[2.5]" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
-                Schema Doctor
-              </h1>
-              <span className="px-2 py-0.5 text-[10px] font-semibold bg-cyan-950 text-cyan-400 border border-cyan-800/60 rounded-full tracking-wide uppercase">
-                DBMS 2.0
-              </span>
-            </div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
+              Schema Doctor
+            </h1>
             <p className="text-xs text-slate-400 hidden sm:block">
               Automated Database Normalization & FD Analyzer
             </p>
