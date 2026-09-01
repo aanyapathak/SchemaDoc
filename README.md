@@ -36,30 +36,7 @@ Schema Doctor is a web-based database management systems (DBMS) tool designed to
 - Node.js (v18.0 or higher)
 - npm
 
-### Setup Steps
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/aanyapathak/SchemaDoc.git
-   cd SchemaDoc
-   ```
-
-2. Install project dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Open the application in your browser:
-   ```text
-   http://localhost:5173/
-   ```
-
----
 
 ## Project Structure
 
@@ -83,24 +60,3 @@ SchemaDoc/
 └── README.md                  # Documentation
 ```
 
----
-
-## Docker Deployment
-
-Build and containerize the production web application using Docker:
-
-```bash
-# Build Docker image
-docker build -t schemadoc .
-
-# Run container on port 8080
-docker run -d -p 8080:80 schemadoc
-```
-
----
-
-## License
-
-This project is released under the [MIT License](LICENSE).
-
-Developed by [Aanya Pathak](https://github.com/aanyapathak) for Database Management Systems coursework.
