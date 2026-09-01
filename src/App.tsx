@@ -21,6 +21,7 @@ import { analyzeNormalForm } from './engine/normalFormChecker';
 import { decomposeTo3NF } from './engine/decomposer';
 import { generateSQLScript } from './engine/sqlGenerator';
 import type { BenchmarkPreset, Column, FunctionalDependency, TableRow } from './engine/types';
+import { AIFilterPanel } from './components/AIFilterPanel';
 
 export function App() {
   const defaultPreset = BENCHMARK_PRESETS[0];
@@ -28,6 +29,7 @@ export function App() {
   const [attributes, setAttributes] = useState<string[]>(defaultPreset.columns.map((c) => c.name));
   const [columns, setColumns] = useState<Column[]>(defaultPreset.columns);
   const [rows, setRows] = useState<TableRow[]>(defaultPreset.sampleData);
+  const [filteredRows, setFilteredRows] = useState<TableRow[] | null>(null);
   const [fds, setFds] = useState<FunctionalDependency[]>(() =>
     defaultPreset.fds.map((fd, idx) => ({ ...fd, id: `fd_${idx}` }))
   );
@@ -56,6 +58,7 @@ export function App() {
     setAttributes(newAttrs);
     setColumns(newCols);
     setRows(newRows);
+    setFilteredRows(null);
     setIsInputTableExpanded(true);
     setExpandedTables({ 'tbl_0': true });
     if (preset) {
@@ -166,6 +169,8 @@ export function App() {
     setTimeout(() => setCopiedSql(false), 2000);
   };
 
+  const displayRows = filteredRows || rows;
+
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 p-4 sm:p-8 max-w-6xl mx-auto space-y-8 font-sans">
       {/* Header */}
@@ -176,14 +181,9 @@ export function App() {
               <Database className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-2xl font-extrabold tracking-tight font-mono text-slate-100">
-                  SCHEMA DOCTOR
-                </h1>
-                <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-sky-950/80 text-sky-400 border border-sky-800/50 rounded-full">
-                  DBMS 2.0
-                </span>
-              </div>
+              <h1 className="text-2xl font-extrabold tracking-tight font-mono text-slate-100">
+                SCHEMA DOCTOR
+              </h1>
               <p className="text-xs text-slate-400 mt-0.5">
                 Automated database normalization tool that diagnoses messy tables and splits them into clean 3NF relations.
               </p>
@@ -295,6 +295,12 @@ export function App() {
               </div>
             )}
 
+            <AIFilterPanel 
+              attributes={attributes} 
+              rows={rows} 
+              onFilterResult={setFilteredRows} 
+            />
+
             {/* Uploaded Table via Collapsible Dropdown */}
             {attributes.length > 0 && (
               <div className="subtle-card rounded-xl overflow-hidden font-mono">
@@ -308,7 +314,7 @@ export function App() {
                     ) : (
                       <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
                     )}
-                    <span className="text-slate-100">Uploaded Input Table ({attributes.length} columns, {rows.length} rows)</span>
+                    <span className="text-slate-100">Uploaded Input Table ({attributes.length} columns, {displayRows.length} rows)</span>
                   </div>
 
                   <div className="flex items-center space-x-2 text-xs">
@@ -320,8 +326,8 @@ export function App() {
                 {isInputTableExpanded && (
                   <div className="p-4 bg-slate-950/90 space-y-2 border-t border-slate-800/60">
                     <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                      <span>Showing sample preview ({Math.min(50, rows.length)} of {rows.length} rows)</span>
-                      {rows.length > 50 && <span>Scroll horizontally / vertically for full view</span>}
+                      <span>{filteredRows ? 'Showing AI Filtered Results' : 'Showing sample preview'} ({Math.min(100, displayRows.length)} of {displayRows.length} rows)</span>
+                      {displayRows.length > 100 && <span>Scroll horizontally / vertically for full view</span>}
                     </div>
 
                     <div className="overflow-x-auto border border-slate-800/80 rounded-lg max-h-64">
@@ -342,7 +348,7 @@ export function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                          {rows.slice(0, 100).map((r, i) => (
+                          {displayRows.slice(0, 100).map((r, i) => (
                             <tr key={i} className="hover:bg-slate-900/40 transition-colors">
                               <td className="p-2 border-r border-slate-800 text-center text-slate-500">{i + 1}</td>
                               {attributes.map((attr) => {
