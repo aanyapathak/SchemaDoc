@@ -1,4 +1,4 @@
-# Schema Doctor (SchemaDoc)
+# Schema Doctor
 
 > Automated Relational Database Normalization and Functional Dependency Analysis Engine
 
