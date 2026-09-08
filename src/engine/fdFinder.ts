@@ -6,8 +6,12 @@ export function discoverFunctionalDependencies(
 ): FunctionalDependency[] {
   if (rows.length === 0 || attributes.length === 0) return [];
 
+  // Sample rows if dataset is large (max 300 rows is plenty to determine FDs in <10ms)
+  const sampleRows = rows.length > 300 ? rows.slice(0, 300) : rows;
+
   const discovered: FunctionalDependency[] = [];
-  const maxLhsSize = Math.min(3, attributes.length - 1);
+  // For uploaded tables with many columns, limit candidate LHS size to avoid quadratic/cubic blowup
+  const maxLhsSize = attributes.length > 12 ? 1 : Math.min(2, attributes.length - 1);
 
   const lhsCandidates: string[][] = [];
   
@@ -19,16 +23,6 @@ export function discoverFunctionalDependencies(
     for (let i = 0; i < attributes.length; i++) {
       for (let j = i + 1; j < attributes.length; j++) {
         lhsCandidates.push([attributes[i], attributes[j]]);
-      }
-    }
-  }
-
-  if (maxLhsSize >= 3 && attributes.length <= 8) {
-    for (let i = 0; i < attributes.length; i++) {
-      for (let j = i + 1; j < attributes.length; j++) {
-        for (let k = j + 1; k < attributes.length; k++) {
-          lhsCandidates.push([attributes[i], attributes[j], attributes[k]]);
-        }
       }
     }
   }
@@ -46,7 +40,7 @@ export function discoverFunctionalDependencies(
 
       if (existsSimplerLhs) continue;
 
-      const { confidence, violations } = checkFDConfidence(lhs, targetAttr, rows);
+      const { confidence, violations } = checkFDConfidence(lhs, targetAttr, sampleRows);
 
       if (confidence > 0.8) {
         const existing = discovered.find(

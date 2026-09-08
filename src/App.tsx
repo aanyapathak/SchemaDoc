@@ -18,10 +18,9 @@ import {
 import { BENCHMARK_PRESETS } from './engine/presets';
 import { discoverFunctionalDependencies } from './engine/fdFinder';
 import { analyzeNormalForm } from './engine/normalFormChecker';
-import { decomposeTo3NF } from './engine/decomposer';
+import { decomposeTo1NF, decomposeTo2NF, decomposeTo3NF } from './engine/decomposer';
 import { generateSQLScript } from './engine/sqlGenerator';
 import type { BenchmarkPreset, Column, FunctionalDependency, TableRow } from './engine/types';
-import { AIFilterPanel } from './components/AIFilterPanel';
 
 export function App() {
   const defaultPreset = BENCHMARK_PRESETS[0];
@@ -29,7 +28,6 @@ export function App() {
   const [attributes, setAttributes] = useState<string[]>(defaultPreset.columns.map((c) => c.name));
   const [columns, setColumns] = useState<Column[]>(defaultPreset.columns);
   const [rows, setRows] = useState<TableRow[]>(defaultPreset.sampleData);
-  const [filteredRows, setFilteredRows] = useState<TableRow[] | null>(null);
   const [fds, setFds] = useState<FunctionalDependency[]>(() =>
     defaultPreset.fds.map((fd, idx) => ({ ...fd, id: `fd_${idx}` }))
   );
@@ -43,6 +41,9 @@ export function App() {
   const [isInputTableExpanded, setIsInputTableExpanded] = useState(true);
   const [expandedTables, setExpandedTables] = useState<Record<string, boolean>>({ 'tbl_0': true });
 
+  const [targetNormalForm, setTargetNormalForm] = useState<'1NF' | '2NF' | '3NF'>('3NF');
+  const [isNormalized, setIsNormalized] = useState(false);
+
   const toggleTableDropdown = (idxStr: string) => {
     setExpandedTables((prev) => ({
       ...prev,
@@ -51,16 +52,22 @@ export function App() {
   };
 
   const analysis = useMemo(() => analyzeNormalForm(attributes, columns, fds, rows), [attributes, columns, fds, rows]);
-  const decomposedTables = useMemo(() => decomposeTo3NF(attributes, fds, rows), [attributes, fds, rows]);
+  
+  const decomposedTables = useMemo(() => {
+    if (!isNormalized) return [];
+    if (targetNormalForm === '1NF') return decomposeTo1NF(attributes, fds, rows);
+    if (targetNormalForm === '2NF') return decomposeTo2NF(attributes, fds, rows);
+    return decomposeTo3NF(attributes, fds, rows);
+  }, [isNormalized, targetNormalForm, attributes, fds, rows]);
 
   const handleLoadDataset = (newAttrs: string[], newCols: Column[], newRows: TableRow[], preset?: BenchmarkPreset) => {
     setErrorMsg(null);
     setAttributes(newAttrs);
     setColumns(newCols);
     setRows(newRows);
-    setFilteredRows(null);
     setIsInputTableExpanded(true);
     setExpandedTables({ 'tbl_0': true });
+    setIsNormalized(false);
     if (preset) {
       setSelectedPresetId(preset.id);
       setFds(preset.fds.map((fd, idx) => ({ ...fd, id: `fd_${idx}` })));
@@ -78,6 +85,12 @@ export function App() {
     reader.onload = (evt) => {
       const text = evt.target?.result as string;
       parseCSV(text);
+      // Reset input value so re-uploading the same file triggers onChange
+      e.target.value = '';
+    };
+    reader.onerror = () => {
+      setErrorMsg('Failed to read uploaded file.');
+      e.target.value = '';
     };
     reader.readAsText(file);
   };
@@ -85,16 +98,43 @@ export function App() {
   const parseCSV = (text: string) => {
     setErrorMsg(null);
     try {
-      const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+      // Split lines respecting both Windows CRLF and Unix LF
+      const rawLines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      const lines = rawLines.map((l) => l.trim()).filter(Boolean);
+
       if (lines.length < 2) {
-        setErrorMsg('CSV must contain a header row and data rows.');
+        setErrorMsg('CSV must contain a header row and at least one data row.');
         return;
       }
-      const headers = lines[0].split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
+
+      // Helper to parse a CSV row handling quotes and commas inside quotes
+      const splitCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"' || char === "'") {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim().replace(/^["']|["']$/g, ''));
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim().replace(/^["']|["']$/g, ''));
+        return result;
+      };
+
+      const rawHeaders = splitCSVLine(lines[0]);
+      // Filter out empty headers and sanitize
+      const headers = rawHeaders.map((h, i) => h || `Column_${i + 1}`);
       const parsedRows: TableRow[] = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map((v) => v.trim().replace(/^["']|["']$/g, ''));
+        const values = splitCSVLine(lines[i]);
         const rowObj: TableRow = {};
         headers.forEach((h, idx) => {
           const val = values[idx] ?? '';
@@ -168,8 +208,6 @@ export function App() {
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 2000);
   };
-
-  const displayRows = filteredRows || rows;
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 p-4 sm:p-8 max-w-6xl mx-auto space-y-8 font-sans">
@@ -295,11 +333,34 @@ export function App() {
               </div>
             )}
 
-            <AIFilterPanel 
-              attributes={attributes} 
-              rows={rows} 
-              onFilterResult={setFilteredRows} 
-            />
+            {/* Normalization Target Selector */}
+            {attributes.length > 0 && (
+              <div className="subtle-card p-4 rounded-xl space-y-4 border border-slate-800/80 bg-slate-900/60 mt-4">
+                <h3 className="text-xs font-bold font-mono text-sky-400">Select Normalization Technique</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-6 text-xs font-mono">
+                    <label className="flex items-center gap-2 cursor-pointer text-slate-200">
+                        <input type="radio" value="1NF" checked={targetNormalForm === '1NF'} onChange={(e) => setTargetNormalForm(e.target.value as any)} className="accent-sky-500 w-4 h-4" />
+                        <span>1NF (Atomic Values)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-slate-200">
+                        <input type="radio" value="2NF" checked={targetNormalForm === '2NF'} onChange={(e) => setTargetNormalForm(e.target.value as any)} className="accent-sky-500 w-4 h-4" />
+                        <span>2NF (Remove Partial Dependencies)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-slate-200">
+                        <input type="radio" value="3NF" checked={targetNormalForm === '3NF'} onChange={(e) => setTargetNormalForm(e.target.value as any)} className="accent-sky-500 w-4 h-4" />
+                        <span>3NF (Remove Transitive Dependencies)</span>
+                    </label>
+                  </div>
+                  <button
+                    onClick={() => setIsNormalized(true)}
+                    className="px-5 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold font-mono text-xs rounded-lg transition-all cursor-pointer shadow-md shadow-sky-950/40"
+                  >
+                    Normalize Data
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Uploaded Table via Collapsible Dropdown */}
             {attributes.length > 0 && (
@@ -314,7 +375,7 @@ export function App() {
                     ) : (
                       <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
                     )}
-                    <span className="text-slate-100">Uploaded Input Table ({attributes.length} columns, {displayRows.length} rows)</span>
+                    <span className="text-slate-100">Uploaded Input Table ({attributes.length} columns, {rows.length} rows)</span>
                   </div>
 
                   <div className="flex items-center space-x-2 text-xs">
@@ -326,8 +387,8 @@ export function App() {
                 {isInputTableExpanded && (
                   <div className="p-4 bg-slate-950/90 space-y-2 border-t border-slate-800/60">
                     <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                      <span>{filteredRows ? 'Showing AI Filtered Results' : 'Showing sample preview'} ({Math.min(100, displayRows.length)} of {displayRows.length} rows)</span>
-                      {displayRows.length > 100 && <span>Scroll horizontally / vertically for full view</span>}
+                      <span>Showing sample preview ({Math.min(100, rows.length)} of {rows.length} rows)</span>
+                      {rows.length > 100 && <span>Scroll horizontally / vertically for full view</span>}
                     </div>
 
                     <div className="overflow-x-auto border border-slate-800/80 rounded-lg max-h-64">
@@ -348,7 +409,7 @@ export function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                          {displayRows.slice(0, 100).map((r, i) => (
+                          {rows.slice(0, 100).map((r, i) => (
                             <tr key={i} className="hover:bg-slate-900/40 transition-colors">
                               <td className="p-2 border-r border-slate-800 text-center text-slate-500">{i + 1}</td>
                               {attributes.map((attr) => {
@@ -388,7 +449,8 @@ export function App() {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleCopySql}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 font-mono text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                  disabled={!isNormalized || decomposedTables.length === 0}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-850 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700/80 text-slate-200 font-mono text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   {copiedSql ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                   <span>{copiedSql ? 'Copied SQL' : 'Copy SQL Script'}</span>
@@ -396,7 +458,8 @@ export function App() {
 
                 <button
                   onClick={handleDownloadZip}
-                  className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold font-mono text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/40"
+                  disabled={!isNormalized || decomposedTables.length === 0}
+                  className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold font-mono text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/40"
                 >
                   <Download className="h-4 w-4" />
                   <span>Download Corrected CSVs (.zip)</span>
@@ -404,9 +467,18 @@ export function App() {
               </div>
             </div>
 
-            {/* Normalized Tables via Collapsible Dropdowns */}
-            <div className="space-y-3 font-mono">
-              {decomposedTables.map((table, tIdx) => {
+            {/* Normalized Tables via Collapsible Dropdowns or Blank State */}
+            {!isNormalized ? (
+              <div className="subtle-card p-10 rounded-xl text-center space-y-3 border border-slate-800/80 border-dashed bg-slate-900/30">
+                <Database className="h-8 w-8 text-slate-600 mx-auto" />
+                <div className="text-sm font-semibold text-slate-300 font-mono">No Normalization Applied Yet</div>
+                <div className="text-xs text-slate-500 font-mono max-w-md mx-auto">
+                  Select a normal form technique (1NF, 2NF, or 3NF) above and click <span className="text-sky-400 font-semibold">"Normalize Data"</span> to process the table and generate normalized relations.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 font-mono">
+                {decomposedTables.map((table, tIdx) => {
                 const isExpanded = !!expandedTables[`tbl_${tIdx}`];
                 return (
                   <div key={tIdx} className="subtle-card rounded-xl overflow-hidden">
@@ -478,7 +550,8 @@ export function App() {
                 );
               })}
             </div>
-          </section>
+          )}
+        </section>
         </div>
       )}
 

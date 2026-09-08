@@ -3,7 +3,7 @@ import type {
   FunctionalDependency,
   TableRow,
 } from './types';
-import { findCandidateKeys, computeClosure } from './closure';
+import { findCandidateKeys, computeClosure, classifyAttributes } from './closure';
 import { projectDataToTables } from './dataMigrator';
 
 export function computeCanonicalCover(
@@ -68,6 +68,114 @@ export function computeCanonicalCover(
   });
 
   return resultCover;
+}
+
+export function decomposeTo1NF(
+  allAttributes: string[],
+  fds: FunctionalDependency[],
+  rows: TableRow[]
+): DecomposedTable[] {
+  const candidateKeys = findCandidateKeys(allAttributes, fds);
+  const primaryCandidateKey = candidateKeys[0]?.attributes || allAttributes;
+  
+  const tables: DecomposedTable[] = [{
+    id: 'tbl_1',
+    name: 'tbl_1nf_main',
+    attributes: allAttributes,
+    primaryKey: primaryCandidateKey,
+    foreignKeys: [],
+    reason: `1NF Form: Contains all attributes with primary candidate key { ${primaryCandidateKey.join(', ')} }.`,
+    data: []
+  }];
+  
+  return projectDataToTables(allAttributes, tables, rows);
+}
+
+export function decomposeTo2NF(
+  allAttributes: string[],
+  fds: FunctionalDependency[],
+  rows: TableRow[]
+): DecomposedTable[] {
+  const candidateKeys = findCandidateKeys(allAttributes, fds);
+  const primaryCandidateKey = candidateKeys[0]?.attributes || allAttributes;
+  
+  const { nonPrimeAttributes } = classifyAttributes(allAttributes, candidateKeys);
+  
+  const partialDependencies = new Map<string, Set<string>>();
+  const canonicalCover = computeCanonicalCover(fds);
+  
+  for (const fd of canonicalCover) {
+     const isProperSubset = fd.lhs.length < primaryCandidateKey.length && fd.lhs.every(attr => primaryCandidateKey.includes(attr));
+     if (isProperSubset) {
+         const nonPrimeRhs = fd.rhs.filter(attr => nonPrimeAttributes.includes(attr));
+         if (nonPrimeRhs.length > 0) {
+            const key = fd.lhs.sort().join(',');
+            if (!partialDependencies.has(key)) {
+                partialDependencies.set(key, new Set());
+            }
+            nonPrimeRhs.forEach(attr => partialDependencies.get(key)!.add(attr));
+         }
+     }
+  }
+  
+  if (partialDependencies.size === 0) {
+     return decomposeTo1NF(allAttributes, fds, rows);
+  }
+  
+  const rawRelations: { name: string; attributes: string[]; primaryKey: string[]; reason: string }[] = [];
+  let mainTableAttributes = new Set(allAttributes);
+  
+  let tblIdx = 1;
+  partialDependencies.forEach((rhsSet, lhsKey) => {
+      const lhs = lhsKey.split(',');
+      const rhs = Array.from(rhsSet);
+      
+      const mainAttr = lhs[0] || 'Entity';
+      const tableName = `tbl_${cleanTableName(mainAttr)}_partial_${tblIdx++}`;
+      
+      rawRelations.push({
+          name: tableName,
+          attributes: [...lhs, ...rhs],
+          primaryKey: lhs,
+          reason: `Extracted to remove partial dependency: { ${lhs.join(', ')} } → { ${rhs.join(', ')} }`
+      });
+      
+      rhs.forEach(attr => mainTableAttributes.delete(attr));
+  });
+  
+  rawRelations.push({
+      name: `tbl_2nf_main`,
+      attributes: Array.from(mainTableAttributes),
+      primaryKey: primaryCandidateKey,
+      reason: `Main table retaining full primary key { ${primaryCandidateKey.join(', ')} } and fully dependent attributes.`
+  });
+  
+  const tables: DecomposedTable[] = rawRelations.map((rel, idx) => {
+      const foreignKeys: DecomposedTable['foreignKeys'] = [];
+      if (rel.name === 'tbl_2nf_main') {
+         rawRelations.forEach((otherRel) => {
+             if (otherRel.name !== 'tbl_2nf_main') {
+                 foreignKeys.push({
+                     column: otherRel.primaryKey,
+                     referencedTable: otherRel.name,
+                     referencedColumn: otherRel.primaryKey
+                 });
+             }
+         });
+      }
+      
+      return {
+          id: `tbl_${idx + 1}`,
+          name: rel.name,
+          attributes: rel.attributes,
+          primaryKey: rel.primaryKey,
+          foreignKeys,
+          reason: rel.reason,
+          data: []
+      };
+  });
+  
+  return projectDataToTables(allAttributes, tables, rows);
 }
 
 export function decomposeTo3NF(

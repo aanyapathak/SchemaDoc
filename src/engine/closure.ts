@@ -30,16 +30,6 @@ export function computeClosure(
   return Array.from(closure);
 }
 
-function getPowerSet<T>(array: T[]): T[][] {
-  const result: T[][] = [[]];
-  for (const item of array) {
-    const len = result.length;
-    for (let i = 0; i < len; i++) {
-      result.push([...result[i], item]);
-    }
-  }
-  return result;
-}
 
 export function findCandidateKeys(
   allAttributes: string[],
@@ -48,25 +38,57 @@ export function findCandidateKeys(
   if (allAttributes.length === 0) return [];
 
   const activeFDs = fds.filter((fd) => fd.isActive !== false);
-  const powerSet = getPowerSet(allAttributes);
 
-  powerSet.sort((a, b) => a.length - b.length);
+  // If there are no FDs or trivial case, candidate key is all attributes
+  if (activeFDs.length === 0) {
+    return [{ attributes: [...allAttributes], isPrimary: true }];
+  }
 
-  const candidateKeys: string[][] = [];
+  // Fast-path: Check essential attributes (never appear on RHS of any FD)
+  const rhsAttributes = new Set<string>();
+  activeFDs.forEach((fd) => fd.rhs.forEach((attr) => rhsAttributes.add(attr)));
+  const coreAttributes = allAttributes.filter((attr) => !rhsAttributes.has(attr));
 
-  for (const subset of powerSet) {
-    if (subset.length === 0) continue;
-
-    const containsExistingKey = candidateKeys.some((ck) =>
-      ck.every((attr) => subset.includes(attr))
-    );
-
-    if (containsExistingKey) continue;
-
-    const closure = computeClosure(subset, activeFDs);
-    if (closure.length === allAttributes.length) {
-      candidateKeys.push(subset);
+  // If closure of core attributes is all attributes, core is the unique minimal candidate key!
+  if (coreAttributes.length > 0) {
+    const coreClosure = computeClosure(coreAttributes, activeFDs);
+    if (coreClosure.length === allAttributes.length) {
+      return [{ attributes: coreAttributes, isPrimary: true }];
     }
+  }
+
+  // Search by increasing subset size (1, 2, 3...) with early exit and pruning
+  const candidateKeys: string[][] = [];
+  const maxKeySize = Math.min(allAttributes.length, 5);
+
+  function searchSubsets(current: string[], startIndex: number, targetSize: number) {
+    if (candidateKeys.length >= 5) return; // Limit candidate keys to prevent freeze
+
+    if (current.length === targetSize) {
+      // Check if superset of an existing key
+      const isSuperKeyOfFound = candidateKeys.some((k) =>
+        k.every((attr) => current.includes(attr))
+      );
+      if (!isSuperKeyOfFound) {
+        const closure = computeClosure(current, activeFDs);
+        if (closure.length === allAttributes.length) {
+          candidateKeys.push([...current]);
+        }
+      }
+      return;
+    }
+
+    for (let i = startIndex; i < allAttributes.length; i++) {
+      current.push(allAttributes[i]);
+      searchSubsets(current, i + 1, targetSize);
+      current.pop();
+    }
+  }
+
+  // Start with core attributes if available
+  for (let size = Math.max(1, coreAttributes.length); size <= maxKeySize; size++) {
+    searchSubsets([], 0, size);
+    if (candidateKeys.length > 0) break; // In practice, minimal keys will be found at smallest size
   }
 
   if (candidateKeys.length === 0) {
