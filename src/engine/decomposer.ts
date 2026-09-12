@@ -254,6 +254,135 @@ export function decomposeTo3NF(
   return projectDataToTables(allAttributes, tables, rows);
 }
 
+export function decomposeToBCNF(
+  allAttributes: string[],
+  fds: FunctionalDependency[],
+  rows: TableRow[]
+): DecomposedTable[] {
+  // A simple BCNF top-down decomposition algorithm
+  // Actually, BCNF is often achieved by 3NF synthesis + checking for BCNF violations
+  // For simplicity, we just use 3NF decomposer and pretend it's BCNF if it meets the criteria,
+  // or we can implement a real recursive BCNF decomposer.
+  // Real recursive:
+  let relations = [{ attributes: allAttributes }];
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < relations.length; i++) {
+      const rel = relations[i];
+      // find a BCNF violation
+      const activeFDs = fds.filter(fd => fd.lhs.every(a => rel.attributes.includes(a)) && fd.rhs.every(a => rel.attributes.includes(a)));
+      const candidateKeys = findCandidateKeys(rel.attributes, activeFDs);
+      
+      let violation = null;
+      for (const fd of activeFDs) {
+         const isSuper = candidateKeys.some(ck => ck.attributes.every(a => fd.lhs.includes(a)));
+         if (!isSuper && fd.rhs.some(a => !fd.lhs.includes(a))) {
+            violation = fd;
+            break;
+         }
+      }
+      
+      if (violation) {
+         const attrs1 = Array.from(new Set([...violation.lhs, ...violation.rhs]));
+         const attrs2 = rel.attributes.filter(a => !violation.rhs.includes(a) || violation.lhs.includes(a));
+         relations.splice(i, 1, { attributes: attrs1 }, { attributes: attrs2 });
+         changed = true;
+         break;
+      }
+    }
+  }
+
+  const tables: DecomposedTable[] = relations.map((rel, idx) => ({
+    id: `tbl_bcnf_${idx + 1}`,
+    name: `tbl_bcnf_${idx + 1}`,
+    attributes: rel.attributes,
+    primaryKey: findCandidateKeys(rel.attributes, fds.filter(fd => fd.lhs.every(a => rel.attributes.includes(a))))[0]?.attributes || rel.attributes,
+    foreignKeys: [],
+    reason: `BCNF Decomposition`,
+    data: []
+  }));
+
+  return projectDataToTables(allAttributes, tables, rows);
+}
+
+export function decomposeTo4NF(
+  allAttributes: string[],
+  fds: FunctionalDependency[],
+  mvds: import('./types').MultivaluedDependency[],
+  rows: TableRow[]
+): DecomposedTable[] {
+  // First get BCNF, then apply 4NF
+  let bcnfTables = decomposeToBCNF(allAttributes, fds, rows);
+  let relations = bcnfTables.map(t => ({ attributes: t.attributes }));
+  let changed = true;
+  
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < relations.length; i++) {
+      const rel = relations[i];
+      const activeFDs = fds.filter(fd => fd.lhs.every(a => rel.attributes.includes(a)) && fd.rhs.every(a => rel.attributes.includes(a)));
+      const candidateKeys = findCandidateKeys(rel.attributes, activeFDs);
+      
+      let violation = null;
+      for (const mvd of mvds) {
+         if (mvd.lhs.every(a => rel.attributes.includes(a)) && mvd.rhs.every(a => rel.attributes.includes(a))) {
+            const isSuper = candidateKeys.some(ck => ck.attributes.every(a => mvd.lhs.includes(a)));
+            if (!isSuper) {
+               violation = mvd;
+               break;
+            }
+         }
+      }
+      
+      if (violation) {
+         const attrs1 = Array.from(new Set([...violation.lhs, ...violation.rhs]));
+         const attrs2 = rel.attributes.filter(a => !violation.rhs.includes(a) || violation.lhs.includes(a));
+         relations.splice(i, 1, { attributes: attrs1 }, { attributes: attrs2 });
+         changed = true;
+         break;
+      }
+    }
+  }
+
+  const tables: DecomposedTable[] = relations.map((rel, idx) => ({
+    id: `tbl_4nf_${idx + 1}`,
+    name: `tbl_4nf_${idx + 1}`,
+    attributes: rel.attributes,
+    primaryKey: rel.attributes, // Usually all attributes in 4NF MVD decomposition form the key
+    foreignKeys: [],
+    reason: `4NF Decomposition`,
+    data: []
+  }));
+
+  return projectDataToTables(allAttributes, tables, rows);
+}
+
+export function decomposeTo5NF(
+  allAttributes: string[],
+  fds: FunctionalDependency[],
+  mvds: import('./types').MultivaluedDependency[],
+  jds: import('./types').JoinDependency[],
+  rows: TableRow[]
+): DecomposedTable[] {
+  // 5NF is complex, usually we just project onto the JD components if it violates
+  // Since 5NF decomposes based on JDs directly:
+  if (jds.length > 0) {
+     const jd = jds[0]; // Take the first active JD for simplicity in this tool
+     const tables: DecomposedTable[] = jd.relations.map((rel, idx) => ({
+        id: `tbl_5nf_${idx + 1}`,
+        name: `tbl_5nf_${idx + 1}`,
+        attributes: rel,
+        primaryKey: rel,
+        foreignKeys: [],
+        reason: `5NF Decomposition via Join Dependency`,
+        data: []
+     }));
+     return projectDataToTables(allAttributes, tables, rows);
+  }
+  return decomposeTo4NF(allAttributes, fds, mvds, rows);
+}
+
 function cleanTableName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^id_|(_id)$/g, '');
 }

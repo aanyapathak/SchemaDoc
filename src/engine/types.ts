@@ -1,4 +1,4 @@
-export type NormalForm = 'UNNORMALIZED' | '1NF' | '2NF' | '3NF' | 'BCNF';
+export type NormalForm = 'UNNORMALIZED' | '1NF' | '2NF' | '3NF' | 'BCNF' | '4NF' | '5NF';
 
 export interface Column {
   name: string;
@@ -18,18 +18,33 @@ export interface FunctionalDependency {
   isActive?: boolean;
 }
 
+export interface MultivaluedDependency {
+  id: string;
+  lhs: string[]; // Determinant attributes X
+  rhs: string[]; // Dependent attributes Y (X ->-> Y)
+  isActive?: boolean;
+}
+
+export interface JoinDependency {
+  id: string;
+  relations: string[][]; // Array of subsets of attributes that join back to R
+  isActive?: boolean;
+}
+
 export interface CandidateKey {
   attributes: string[];
   isPrimary?: boolean;
 }
 
 export interface NFViolation {
-  level: '1NF' | '2NF' | '3NF' | 'BCNF';
+  level: '1NF' | '2NF' | '3NF' | 'BCNF' | '4NF' | '5NF';
   fd?: FunctionalDependency;
+  mvd?: MultivaluedDependency;
+  jd?: JoinDependency;
   failingKey?: string[];
   affectedAttributes: string[];
   reason: string;
-  mathProof: string[]; // Step-by-step Unit 2 textbook proof steps
+  mathProof: string[]; // Step-by-step textbook proof steps
   recommendation: string;
 }
 
@@ -39,6 +54,8 @@ export interface NormalizationAnalysis {
   is2NF: boolean;
   is3NF: boolean;
   isBCNF: boolean;
+  is4NF: boolean;
+  is5NF: boolean;
   candidateKeys: CandidateKey[];
   primeAttributes: string[];
   nonPrimeAttributes: string[];

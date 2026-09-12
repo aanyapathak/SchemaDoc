@@ -70,9 +70,13 @@ export function analyzeNormalForm(
   attributes: string[],
   columns: Column[],
   fds: FunctionalDependency[],
-  rows: TableRow[]
+  rows: TableRow[],
+  mvds: import('./types').MultivaluedDependency[] = [],
+  jds: import('./types').JoinDependency[] = []
 ): NormalizationAnalysis {
   const activeFDs = fds.filter((fd) => fd.isActive !== false);
+  const activeMVDs = mvds.filter((mvd) => mvd.isActive !== false);
+  const activeJDs = jds.filter((jd) => jd.isActive !== false);
 
   const { is1NF, violations: nf1Violations } = check1NF(columns, rows);
 
@@ -82,12 +86,14 @@ export function analyzeNormalForm(
     candidateKeys
   );
 
-  const violations: NFViolation[] = [...nf1Violations];
+  const violations: import('./types').NFViolation[] = [...nf1Violations];
   const explanations: string[] = [];
 
   let is2NF = is1NF;
   let is3NF = is1NF;
   let isBCNF = is1NF;
+  let is4NF = is1NF;
+  let is5NF = is1NF;
 
   const ckStrings = candidateKeys
     .map((ck) => `{ ${ck.attributes.join(', ')} }`)
@@ -110,6 +116,8 @@ export function analyzeNormalForm(
       is2NF: false,
       is3NF: false,
       isBCNF: false,
+      is4NF: false,
+      is5NF: false,
       candidateKeys,
       primeAttributes,
       nonPrimeAttributes,
@@ -244,8 +252,57 @@ export function analyzeNormalForm(
     }
   }
 
-  let maxNormalForm: NormalForm = '1NF';
+  // 4NF Check
+  for (const mvd of activeMVDs) {
+    const lhsIsSuper = isSuperKey(mvd.lhs, attributes, activeFDs);
+    if (!lhsIsSuper) {
+      is4NF = false;
+      violations.push({
+        level: '4NF',
+        mvd,
+        affectedAttributes: mvd.rhs,
+        reason: `4NF Violation! MVD { ${mvd.lhs.join(', ')} } ↠ { ${mvd.rhs.join(', ')} } holds, but { ${mvd.lhs.join(', ')} } is NOT a Superkey.`,
+        mathProof: [
+          `MVD: { ${mvd.lhs.join(', ')} } ↠ { ${mvd.rhs.join(', ')} }`,
+          `4NF Rule: For every non-trivial MVD X ↠ Y, X MUST be a Superkey.`,
+          `Conclusion: Determinant { ${mvd.lhs.join(', ')} } is not a superkey, violating 4NF!`,
+        ],
+        recommendation: `Split relation into R1({ ${mvd.lhs.join(', ')}, ${mvd.rhs.join(', ')} }) and R2(R - Y).`,
+      });
+    }
+  }
+
+  // 5NF Check
+  for (const jd of activeJDs) {
+    let impliedBySuperkeys = true;
+    for (const rel of jd.relations) {
+      if (!isSuperKey(rel, attributes, activeFDs)) {
+        impliedBySuperkeys = false;
+        break;
+      }
+    }
+    
+    if (!impliedBySuperkeys) {
+      is5NF = false;
+      violations.push({
+        level: '5NF',
+        jd,
+        affectedAttributes: [],
+        reason: `5NF Violation! Join Dependency holds but not all components are Superkeys.`,
+        mathProof: [
+          `JD: ⋈(${jd.relations.map(r => '{' + r.join(', ') + '}').join(', ')})`,
+          `5NF Rule: For every non-trivial JD, every component relation MUST be a Superkey.`,
+          `Conclusion: Not all components are superkeys, violating 5NF!`,
+        ],
+        recommendation: `Decompose table into the projections defined by the Join Dependency.`,
+      });
+    }
+  }
+
+  let maxNormalForm: import('./types').NormalForm = '1NF';
   if (!is1NF) maxNormalForm = 'UNNORMALIZED';
+  else if (is5NF && is4NF && isBCNF) maxNormalForm = '5NF';
+  else if (is4NF && isBCNF) maxNormalForm = '4NF';
   else if (isBCNF) maxNormalForm = 'BCNF';
   else if (is3NF) maxNormalForm = '3NF';
   else if (is2NF) maxNormalForm = '2NF';
@@ -256,6 +313,8 @@ export function analyzeNormalForm(
     is2NF,
     is3NF,
     isBCNF,
+    is4NF,
+    is5NF,
     candidateKeys,
     primeAttributes,
     nonPrimeAttributes,
