@@ -3,7 +3,6 @@ import type {
   FunctionalDependency,
   NFViolation,
   NormalizationAnalysis,
-  NormalForm,
   TableRow,
 } from './types';
 import {

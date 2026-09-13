@@ -1,9 +1,6 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { ToolPage } from './pages/ToolPage';
-import { Navbar } from './components/Navbar';
-
 export function App() {
   return (
     <BrowserRouter>

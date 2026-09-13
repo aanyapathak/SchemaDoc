@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { MultivaluedDependency } from '../engine/types';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface MVDEditorProps {
   attributes: string[];
@@ -8,7 +8,7 @@ interface MVDEditorProps {
   setMvds: (mvds: MultivaluedDependency[]) => void;
 }
 
-export const MVDEditor: React.FC<MVDEditorProps> = ({ attributes, mvds, setMvds }) => {
+export const MVDEditor: React.FC<MVDEditorProps> = ({ attributes: _attributes, mvds, setMvds }) => {
   const [lhs, setLhs] = useState<string>('');
   const [rhs, setRhs] = useState<string>('');
 
