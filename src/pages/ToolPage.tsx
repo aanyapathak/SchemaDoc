@@ -23,6 +23,17 @@ import { generateSQLScript } from '../engine/sqlGenerator';
 import type { BenchmarkPreset, Column, FunctionalDependency, TableRow } from '../engine/types';
 import { MVDEditor } from '../components/MVDEditor';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
+import { motion } from 'framer-motion';
+
+const FadeIn: React.FC<{ children: React.ReactNode; delay?: number }> = ({ children, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
+  >
+    {children}
+  </motion.div>
+);
 
 export function ToolPage() {
   const defaultPreset = BENCHMARK_PRESETS[0];
@@ -232,20 +243,25 @@ export function ToolPage() {
   };
 
   return (
-    <div className="bg-[#0b0f19] text-slate-100 p-4 sm:p-8 max-w-6xl mx-auto space-y-8 font-sans">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="text-slate-200 p-4 sm:p-8 max-w-5xl mx-auto space-y-12 font-sans"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-900 pb-8">
         <div>
-          <h2 className="text-xl font-bold font-mono text-slate-100">Normalization Tool</h2>
+          <h2 className="text-4xl font-medium font-sans tracking-tight text-white mb-2">Normalization Engine</h2>
+          <p className="text-slate-400 font-light text-sm">Upload, parse, and perfectly decompose relational databases.</p>
         </div>
-        <div className="flex items-center space-x-2 text-xs font-mono">
-          <span className="text-slate-400">Sample Table:</span>
+        <div className="flex items-center space-x-3 text-xs font-sans">
+          <span className="text-slate-500 font-light">Load Sample:</span>
           <select
             value={selectedPresetId}
             onChange={(e) => {
               const preset = BENCHMARK_PRESETS.find((p) => p.id === e.target.value);
               if (preset) handleLoadDataset(preset.columns.map((c) => c.name), preset.columns, preset.sampleData, preset);
             }}
-            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-sky-500 cursor-pointer font-mono transition-colors"
+            className="bg-[#111] border border-slate-800 text-slate-300 text-xs rounded-full px-4 py-2 focus:outline-none focus:border-sky-500/50 cursor-pointer transition-colors"
           >
             {BENCHMARK_PRESETS.map((p) => (
               <option key={p.id} value={p.id}>
@@ -256,46 +272,49 @@ export function ToolPage() {
         </div>
       </div>
 
+      <FadeIn delay={0.1}>
         {/* Tab Selector */}
-        <div className="flex space-x-2 pt-1 text-xs font-mono">
+        <div className="flex space-x-8 pt-1 text-sm font-sans border-b border-slate-900">
           <button
             onClick={() => setActiveTab('tool')}
-            className={`px-4 py-2 rounded-lg font-semibold border transition-all cursor-pointer flex items-center space-x-2 ${
+            className={`pb-4 px-2 transition-all cursor-pointer flex items-center space-x-2 border-b-2 ${
               activeTab === 'tool'
-                ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md shadow-sky-950/40'
-                : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                ? 'text-white border-sky-400 font-medium'
+                : 'text-slate-500 border-transparent hover:text-slate-300 font-light'
             }`}
           >
-            <FileText className="h-3.5 w-3.5" />
+            <FileText className="h-4 w-4" />
             <span>Normalization Tool</span>
           </button>
 
           <button
             onClick={() => setActiveTab('explanation')}
-            className={`px-4 py-2 rounded-lg font-semibold border transition-all cursor-pointer flex items-center space-x-2 ${
+            className={`pb-4 px-2 transition-all cursor-pointer flex items-center space-x-2 border-b-2 ${
               activeTab === 'explanation'
-                ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md shadow-sky-950/40'
-                : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                ? 'text-white border-sky-400 font-medium'
+                : 'text-slate-500 border-transparent hover:text-slate-300 font-light'
             }`}
           >
-            <GraduationCap className="h-3.5 w-3.5" />
+            <GraduationCap className="h-4 w-4" />
             <span>Working Explanation</span>
           </button>
         </div>
+      </FadeIn>
 
       {/* ============================================================ */}
       {/* TAB 1: MAIN TOOL VIEW */}
       {/* ============================================================ */}
       {activeTab === 'tool' && (
-        <div className="space-y-8">
+        <div className="space-y-12">
           {/* SECTION 1: UPLOAD MESSY TABLE FILE */}
-          <section className="space-y-5">
-            <div className="border-b border-slate-800/80 pb-2 flex items-center justify-between">
-              <h2 className="text-sm font-bold font-mono tracking-wide flex items-center gap-2 text-slate-200">
-                <span className="bg-sky-950 text-sky-400 border border-sky-800/60 text-[11px] font-bold px-2 py-0.5 rounded">
-                  SECTION 1
+          <FadeIn delay={0.2}>
+          <section className="space-y-6">
+            <div className="border-b border-slate-900 pb-3 flex items-center justify-between">
+              <h2 className="text-xl font-medium tracking-tight flex items-center gap-3 text-white">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-900 border border-slate-800 text-slate-400 text-xs font-mono">
+                  1
                 </span>
-                <span>Upload Messy Table / Copy Data</span>
+                <span>Upload Dataset</span>
               </h2>
             </div>
 
@@ -411,7 +430,7 @@ export function ToolPage() {
 
                   <div className="flex items-center space-x-2 text-xs">
                     <span className="text-slate-400">Primary Key:</span>
-                    <span className="text-emerald-400 font-bold">&#123;{analysis.candidateKeys[0]?.attributes.join(', ')}&#125;</span>
+                    <span className="text-sky-400 font-bold">&#123;{analysis.candidateKeys[0]?.attributes.join(', ')}&#125;</span>
                   </div>
                 </button>
 
@@ -431,7 +450,7 @@ export function ToolPage() {
                               const isPk = analysis.candidateKeys[0]?.attributes.includes(attr);
                               return (
                                 <th key={attr} className="p-2 border-r border-slate-800 whitespace-nowrap bg-slate-900">
-                                  <span className={isPk ? 'text-emerald-400 font-bold' : 'text-slate-300'}>
+                                  <span className={isPk ? 'text-sky-400 font-bold' : 'text-slate-300'}>
                                     {attr} {isPk && '(PK)'}
                                   </span>
                                 </th>
@@ -449,7 +468,7 @@ export function ToolPage() {
                                   <td
                                     key={attr}
                                     className={`p-2 border-r border-slate-800 whitespace-nowrap ${
-                                      isPk ? 'text-emerald-300/90 font-medium' : 'text-slate-300'
+                                      isPk ? 'text-sky-300/90 font-medium' : 'text-slate-300'
                                     }`}
                                   >
                                     {String(r[attr] ?? '')}
@@ -466,15 +485,17 @@ export function ToolPage() {
               </div>
             )}
           </section>
+          </FadeIn>
 
           {/* SECTION 2: DOWNLOAD NORMALIZED DATA TABLE VIA DROPDOWNS */}
-          <section className="space-y-5 pt-4 border-t border-slate-800/80">
-            <div className="border-b border-slate-800/80 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-sm font-bold font-mono tracking-wide flex items-center gap-2 text-slate-200">
-                <span className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[11px] font-bold px-2 py-0.5 rounded">
-                  SECTION 2
+          <FadeIn delay={0.3}>
+          <section className="space-y-6 pt-6">
+            <div className="border-b border-slate-900 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h2 className="text-xl font-medium tracking-tight flex items-center gap-3 text-white">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-900 border border-slate-800 text-slate-400 text-xs font-mono">
+                  2
                 </span>
-                <span>Download Normalized Data Tables</span>
+                <span>Export & Implementation</span>
               </h2>
 
               <div className="flex items-center space-x-2">
@@ -483,14 +504,14 @@ export function ToolPage() {
                   disabled={!isNormalized || decomposedTables.length === 0}
                   className="px-3 py-1.5 bg-slate-900 hover:bg-slate-850 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700/80 text-slate-200 font-mono text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  {copiedSql ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedSql ? <Check className="h-3.5 w-3.5 text-sky-400" /> : <Copy className="h-3.5 w-3.5" />}
                   <span>{copiedSql ? 'Copied SQL' : 'Copy SQL Script'}</span>
                 </button>
 
                 <button
                   onClick={handleDownloadZip}
                   disabled={!isNormalized || decomposedTables.length === 0}
-                  className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold font-mono text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/40"
+                  className="px-4 py-1.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold font-mono text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-sky-950/40"
                 >
                   <Download className="h-4 w-4" />
                   <span>Download Corrected CSVs (.zip)</span>
@@ -527,7 +548,7 @@ export function ToolPage() {
                       </div>
 
                       <div className="flex items-center space-x-3 text-slate-400 font-normal">
-                        <span>Primary Key: <strong className="text-emerald-400">&#123;{table.primaryKey.join(', ')}&#125;</strong></span>
+                        <span>Primary Key: <strong className="text-sky-400">&#123;{table.primaryKey.join(', ')}&#125;</strong></span>
                         <span className="text-[10px] bg-slate-950 px-2 py-0.5 border border-slate-800 rounded text-slate-300">
                           {table.data.length} Rows
                         </span>
@@ -546,7 +567,7 @@ export function ToolPage() {
                                   const isPk = table.primaryKey.includes(attr);
                                   return (
                                     <th key={attr} className="p-2 border-r border-slate-800 whitespace-nowrap bg-slate-900">
-                                      <span className={isPk ? 'text-emerald-400 font-bold' : 'text-slate-300'}>
+                                      <span className={isPk ? 'text-sky-400 font-bold' : 'text-slate-300'}>
                                         {attr} {isPk && '(PK)'}
                                       </span>
                                     </th>
@@ -563,7 +584,7 @@ export function ToolPage() {
                                       <td
                                         key={attr}
                                         className={`p-2 border-r border-slate-800 whitespace-nowrap ${
-                                          isPk ? 'text-emerald-300/90 font-medium' : 'text-slate-300'
+                                          isPk ? 'text-sky-300/90 font-medium' : 'text-slate-300'
                                         }`}
                                       >
                                         {String(r[attr] ?? '')}
@@ -583,6 +604,7 @@ export function ToolPage() {
             </div>
           )}
         </section>
+        </FadeIn>
         </div>
       )}
 
@@ -590,14 +612,15 @@ export function ToolPage() {
       {/* TAB 2: WORKING EXPLANATION */}
       {/* ============================================================ */}
       {activeTab === 'explanation' && (
-        <div className="subtle-card p-6 rounded-xl space-y-6 font-mono">
-          <div className="border-b border-slate-800/80 pb-3 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+        <FadeIn delay={0.2}>
+        <div className="space-y-8 font-mono">
+          <div className="border-b border-slate-900 pb-3 flex items-center justify-between">
+            <h2 className="text-xl font-medium font-sans tracking-tight text-white flex items-center gap-2">
               <GraduationCap className="h-5 w-5 text-sky-400" />
-              <span>Working Explanation & Academic Normalization Proofs</span>
+              <span>Working Explanation & Proofs</span>
             </h2>
-            <span className="text-xs bg-slate-900 text-sky-400 px-3 py-1 border border-slate-800 rounded font-semibold">
-              Current Normal Form: {analysis.maxNormalForm}
+            <span className="text-xs bg-[#111] text-sky-400 px-3 py-1 border border-slate-800 rounded font-semibold">
+              Current Form: {analysis.maxNormalForm}
             </span>
           </div>
 
@@ -610,7 +633,7 @@ export function ToolPage() {
               To determine the primary key of the uploaded table, Schema Doctor computes the attribute closure for all attribute subsets.
             </p>
             <div className="bg-slate-900/90 p-3 rounded border border-slate-800 text-slate-300 space-y-1">
-              <div>Derived Primary Candidate Key: <strong className="text-emerald-400">&#123; {analysis.candidateKeys[0]?.attributes.join(', ')} &#125;</strong></div>
+              <div>Derived Primary Candidate Key: <strong className="text-sky-400">&#123; {analysis.candidateKeys[0]?.attributes.join(', ')} &#125;</strong></div>
               <div>Prime Attributes (belonging to key): &#123; {analysis.primeAttributes.join(', ')} &#125;</div>
               <div>Non-Prime Attributes: &#123; {analysis.nonPrimeAttributes.join(', ')} &#125;</div>
             </div>
@@ -635,14 +658,14 @@ export function ToolPage() {
               </div>
             ) : (
               <div className="text-slate-400 flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                <ShieldCheck className="h-4 w-4 text-sky-400" />
                 <span>No normalization violations detected. Table is already in optimal 3NF form.</span>
               </div>
             )}
           </div>
 
           <div className="bg-slate-950 p-4 border border-slate-800/80 rounded-lg space-y-3 text-xs">
-            <h3 className="font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+            <h3 className="font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="h-4 w-4" />
               <span>3. How Normalization Decomposed the Table (Step-by-Step)</span>
             </h3>
@@ -655,7 +678,7 @@ export function ToolPage() {
                 <div key={idx} className="p-3 border border-slate-800 bg-slate-900/90 rounded space-y-1">
                   <div className="flex items-center justify-between text-slate-100 font-bold">
                     <span className="text-sky-300">Table {idx + 1}: {t.name}</span>
-                    <span className="text-emerald-400">PK: &#123;{t.primaryKey.join(', ')}&#125;</span>
+                    <span className="text-sky-400">PK: &#123;{t.primaryKey.join(', ')}&#125;</span>
                   </div>
                   <div className="text-slate-400 text-[11px]">Attributes: &#123;{t.attributes.join(', ')}&#125;</div>
                   <div className="text-slate-400 text-[11px] italic">Reason: {t.reason}</div>
@@ -664,12 +687,13 @@ export function ToolPage() {
             </div>
           </div>
         </div>
+        </FadeIn>
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/60 pt-6 text-center text-xs text-slate-500 font-mono">
+      <footer className="border-t border-slate-900 pt-8 mt-12 text-center text-xs text-slate-600 font-sans font-light">
         SCHEMA DOCTOR — DBMS Normalization & Table Splitter Tool
       </footer>
-    </div>
+    </motion.div>
   );
 }
