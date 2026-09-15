@@ -1,35 +1,35 @@
 # Schema Doctor
 
+Schema Doctor is an advanced, 100% client-side relational database management systems (DBMS) tool designed to diagnose unnormalized database tables, discover functional dependencies, compute candidate primary keys via attribute closure ($X^+$), audit normal form violations, and decompose relations into **1NF, 2NF, 3NF, BCNF, 4NF, and 5NF** with guaranteed lossless joins and dependency preservation.
 
-
-Schema Doctor is an AI-powered automated relational database management systems (DBMS) tool designed to diagnose unnormalized database tables, discover functional dependencies, compute candidate primary keys via attribute closure ($X^+$), audit normal form violations (1NF, 2NF, 3NF, BCNF), and decompose relations into user-selectable normal forms (**1NF, 2NF, or 3NF**) with guaranteed lossless joins and dependency preservation. It also features an integrated AI assistant to query tabular data using natural language.
+It features a premium, hyper-minimalist cinematic UI designed for developers and database administrators, running entirely in the browser with no backend—ensuring complete data privacy.
 
 ---
 
 ## Key Features
 
-### 1. Table Ingestion & Input Processing
-- **CSV & Tabular Data Ingestion**: Supports uploading `.csv` files or pasting raw CSV/JSON tabular data with quote handling and line break normalization.
-- **Benchmark Presets**: Includes pre-loaded academic DBMS benchmark relations (University Student Enrollment, E-Commerce Orders, Hospital Appointments, Library Book Rentals).
-- **Collapsible Table View**: Clean, formal dark-theme interface with expandable accordions to preview uploaded records cleanly.
+### 1. Cinematic & Professional UI/UX
+- **Scroll Storytelling**: A highly professional, hyper-minimalist black (`#0a0a0a`) and white aesthetic featuring smooth `framer-motion` scroll reveals and transitions.
+- **Client-Side Privacy & Security**: No backend, no databases, and no tracking. All parsing, data discovery, and normalization logic is executed entirely in your browser. 
+- **Auto-Wipe Inactivity Timer**: For maximum privacy, user data is strictly held in React state and is automatically wiped after 10 minutes of inactivity.
 
-### 2. AI-Powered Data Extraction
-- **Natural Language Filtering**: Integrates with the Google Gemini API to allow users to query and filter uploaded datasets using plain English (e.g., "Show me all users in the Sales department with age > 30").
-- **Dynamic Filter Generation**: Uses LLMs to dynamically generate secure, client-side JavaScript filter functions based on the user's natural language prompt and the inferred table schema.
-- **Secure Key Management**: Securely stores user API keys locally in the browser's `localStorage` to ensure privacy and client-side operation.
+### 2. Table Ingestion & Input Processing
+- **CSV & Tabular Data Ingestion**: Supports uploading `.csv` files or pasting raw CSV/JSON tabular data with quote handling and line break normalization. Handles datasets cleanly with virtualized preview rendering.
+- **Benchmark Presets**: Includes pre-loaded academic DBMS benchmark relations (University Student Enrollment, E-Commerce Orders, Hospital Appointments, Library Book Rentals).
 
 ### 3. Relational Theory Engine
 - **Attribute Closure ($X^+$) Calculator**: Computes attribute set closure under active functional dependencies using Armstrong's Axioms.
 - **Candidate Key Derivation**: Derives minimal superkeys and candidate primary keys using size-bounded BFS with superset pruning.
-- **Functional Dependency Mining**: Discovers non-trivial functional dependencies ($X \rightarrow Y$) from sample rows.
-- **Normal Form Evaluator**: Diagnoses 1NF, 2NF, 3NF, and BCNF compliance with step-by-step mathematical proofs.
+- **Functional Dependency Mining**: Automatically discovers non-trivial functional dependencies ($X \rightarrow Y$) from sample rows.
 
-### 4. Selectable Normalization Decompositions (1NF, 2NF, 3NF)
+### 4. Advanced Normalization Techniques (Up to 5NF)
 - **Interactive Technique Selection**: Users select their target normal form before decomposition:
   - **1NF**: Enforces attribute atomicity and designates primary keys.
   - **2NF**: Identifies and extracts partial functional dependencies into separate sub-relations.
   - **3NF**: Employs **Bernstein's 3NF Synthesis Algorithm** on the Minimal Canonical Cover ($F_c$) to eliminate transitive dependencies while guaranteeing lossless join and dependency preservation.
-- **Normalized Table Accordions**: Inspect each generated relation, primary keys, foreign key constraints, and projected tuples.
+  - **BCNF**: Decomposes based on Boyce-Codd violations.
+  - **4NF & MVDs**: Features a manual Multivalued Dependency (MVD) editor to construct $X \twoheadrightarrow Y$ relationships and accurately decompose tables into 4NF.
+  - **5NF**: Handles complex Join Dependencies (JDs).
 - **CSV Archive Export**: Generates a `.zip` archive containing separate CSV files for each normalized table.
 - **Multi-Dialect SQL Generator**: Generates ANSI SQL DDL (`CREATE TABLE`) and DML (`INSERT INTO`) scripts for PostgreSQL, MySQL, SQLite, and SQL Server.
 
@@ -38,34 +38,47 @@ Schema Doctor is an AI-powered automated relational database management systems 
 
 ---
 
-## Installation & Local Setup
+## Local Setup & Deployment
+
+Schema Doctor is a static Single Page Application built with React, Vite, and TypeScript. 
 
 ### Prerequisites
 - Node.js (v18.0 or higher)
 - npm
 
+### Installation
+```bash
+git clone https://github.com/Vatsal0729/SchemaDoc.git
+cd SchemaDoc
+npm install
+npm run dev
+```
 
+### Deployment (Vercel / Netlify)
+The project includes a `vercel.json` and a `public/_redirects` file, pre-configured for SPA routing. You can simply import this repository into Vercel or Netlify and it will deploy out of the box with zero configuration needed.
+
+---
 
 ## Project Structure
 
 ```text
 SchemaDoc/
+├── public/                # Static assets (including _redirects)
 ├── src/
-│   ├── components/            # UI components (Upload, Table Dropdowns, AIFilterPanel, SQL Export)
-│   ├── engine/                # Relational Database Theory Engine
+│   ├── components/        # UI components (Navbar, MVDEditor)
+│   ├── engine/            # Relational Database Theory Engine
 │   │   ├── closure.ts             # Attribute closure X+ & candidate key finder
 │   │   ├── fdFinder.ts            # Functional dependency miner
-│   │   ├── normalFormChecker.ts    # 1NF, 2NF, 3NF, BCNF diagnostic rules
-│   │   ├── decomposer.ts          # Bernstein's 3NF synthesis algorithm
+│   │   ├── normalFormChecker.ts   # Normal form diagnostic rules
+│   │   ├── decomposer.ts          # Normal form decomposition algorithms
 │   │   ├── sqlGenerator.ts        # Multi-dialect SQL script generator
 │   │   └── presets.ts             # Benchmark DBMS datasets
-│   ├── lib/
-│   │   └── ai.ts                  # Google Gemini API integration and code generation
-│   ├── App.tsx                # Application container
-│   ├── index.css              # Styling definitions
-│   └── main.tsx               # Entrypoint script
-├── Dockerfile                 # Production Docker configuration
-├── package.json               # Project dependencies
-├── vite.config.ts             # Vite build settings
-└── README.md                  # Documentation
+│   ├── hooks/             # Custom React hooks (e.g., useInactivityTimer)
+│   ├── pages/             # Page Routes (LandingPage.tsx, ToolPage.tsx)
+│   ├── App.tsx            # Main Application Router Shell
+│   ├── index.css          # Styling definitions & global Tailwind CSS
+│   └── main.tsx           # Entrypoint script
+├── vercel.json            # Vercel SPA routing configuration
+├── package.json           # Project dependencies
+└── vite.config.ts         # Vite build settings
 ```
