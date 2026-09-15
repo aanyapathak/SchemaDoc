@@ -41,7 +41,7 @@ export const LandingPage: React.FC = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
             </span>
-            Schema Doctor v2.0
+            Schema Doctor 
           </div>
           
           <h1 className="text-6xl md:text-8xl font-medium tracking-tighter text-white leading-tight">
